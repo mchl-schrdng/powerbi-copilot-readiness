@@ -1,0 +1,31 @@
+relationship f_Customer
+	fromColumn: f_sls_trx.CustomerKey
+	toColumn: DimCustomer.CustomerKey
+
+relationship f_Product
+	fromColumn: f_sls_trx.ProductKey
+	toColumn: DimProduct.ProductKey
+	crossFilteringBehavior: bothDirections
+
+relationship Product_SubCategory
+	fromColumn: DimProduct.SubCategoryKey
+	toColumn: DimSubCategory.SubCategoryKey
+
+relationship SubCategory_Category
+	fromColumn: DimSubCategory.CategoryKey
+	toColumn: DimCategory.CategoryKey
+
+relationship f_OrderDate
+	fromColumn: f_sls_trx.OrderDateKey
+	toColumn: DimDate.DateKey
+
+relationship f_ShipDate
+	fromColumn: f_sls_trx.ShipDateKey
+	toColumn: DimDate.DateKey
+	isActive: false
+
+relationship f_Promotion
+	fromColumn: f_sls_trx.PromotionKey
+	toColumn: DimPromotion.PromotionKey
+	fromCardinality: many
+	toCardinality: many

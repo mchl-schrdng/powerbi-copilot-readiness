@@ -1,0 +1,13 @@
+table DimSubCategory
+
+	column SubCategoryKey
+		dataType: int64
+		summarizeBy: none
+
+	column CategoryKey
+		dataType: int64
+		summarizeBy: none
+
+	column SubCategoryName
+		dataType: string
+		summarizeBy: none

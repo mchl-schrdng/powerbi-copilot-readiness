@@ -1,0 +1,17 @@
+/// A standard calendar date dimension, one row per day.
+table Date
+
+	column DateKey
+		dataType: int64
+		summarizeBy: none
+		isHidden
+
+	/// The calendar date.
+	column Date
+		dataType: dateTime
+		summarizeBy: none
+
+	/// The calendar year.
+	column 'Calendar Year'
+		dataType: int64
+		summarizeBy: none

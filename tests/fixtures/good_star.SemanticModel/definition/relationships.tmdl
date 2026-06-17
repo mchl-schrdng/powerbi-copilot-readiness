@@ -1,0 +1,15 @@
+relationship Sales_Customer
+	fromColumn: Sales.CustomerKey
+	toColumn: Customer.CustomerKey
+
+relationship Sales_Product
+	fromColumn: Sales.ProductKey
+	toColumn: Product.ProductKey
+
+relationship Sales_Date
+	fromColumn: Sales.DateKey
+	toColumn: Date.DateKey
+
+relationship Sales_Geography
+	fromColumn: Sales.GeographyKey
+	toColumn: Geography.GeographyKey

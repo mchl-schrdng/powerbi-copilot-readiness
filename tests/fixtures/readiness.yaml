@@ -1,0 +1,7 @@
+# Config used by the test fixtures. Declares which table is the fact table for
+# each model so the topology gate can measure join depth.
+fact_tables_by_model:
+  good_star:
+    - Sales
+  bad_snowflake:
+    - f_sls_trx

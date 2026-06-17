@@ -1,0 +1,12 @@
+/// One row per customer account.
+table Customer
+
+	column CustomerKey
+		dataType: int64
+		summarizeBy: none
+		isHidden
+
+	/// The customer account name as shown to the business.
+	column CustomerName
+		dataType: string
+		summarizeBy: none

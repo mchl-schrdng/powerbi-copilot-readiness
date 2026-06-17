@@ -1,0 +1,67 @@
+name: Copilot Readiness
+
+# Gate Power BI semantic models for Copilot "Talk to your data" readiness.
+# Runs on pull requests that touch any .SemanticModel folder, posts the scorecard
+# as a sticky PR comment, and fails the check when a model is NOT READY.
+
+on:
+  pull_request:
+    paths:
+      - "**/*.SemanticModel/**"
+      - "readiness.yaml"
+  push:
+    branches: [main, master]
+    paths:
+      - "**/*.SemanticModel/**"
+      - "readiness.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install linter
+        run: pip install .
+
+      - name: Build the scorecard (markdown)
+        run: copilot-readiness lint . --format markdown --output report.md || true
+
+      - name: Write the job summary
+        run: cat report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post scorecard as a sticky PR comment
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          marker="<!-- copilot-readiness-linter -->"
+          # gh has no native sticky comment, so find our previous comment by marker
+          # and edit it in place; otherwise create a new one.
+          comment_id=$(gh api "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
+            --jq "[.[] | select(.body | contains(\"$marker\"))][0].id" 2>/dev/null || true)
+          if [ -n "$comment_id" ] && [ "$comment_id" != "null" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$comment_id" \
+              -F body=@report.md >/dev/null
+          else
+            gh pr comment "$PR_NUMBER" --body-file report.md
+          fi
+
+      - name: Enforce the gate (annotations + exit code)
+        # 'github' format emits ::error annotations per blocking gate, ::warning
+        # for INCOMPLETE models, and a ::notice summary. It exits non-zero unless
+        # every model is READY, which fails this required check. Add
+        # --allow-incomplete to fail only on genuine defects, not missing config.
+        run: copilot-readiness lint . --format github

@@ -1,0 +1,9 @@
+table DimCustomer
+
+	column CustomerKey
+		dataType: int64
+		summarizeBy: none
+
+	column CustName
+		dataType: string
+		summarizeBy: none

@@ -1,0 +1,13 @@
+table DimDate
+
+	column DateKey
+		dataType: int64
+		summarizeBy: none
+
+	column FullDate
+		dataType: dateTime
+		summarizeBy: none
+
+	column Year
+		dataType: int64
+		summarizeBy: sum

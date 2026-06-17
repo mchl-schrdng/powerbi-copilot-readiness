@@ -1,0 +1,50 @@
+# Copilot readiness linter configuration.
+# Every field is optional. Defaults match the readiness scorecard, so the linter
+# works with an empty file. The one thing worth declaring is your fact tables:
+# the topology gate refuses to guess them, so declare them here to get join-depth
+# and snowflake checks.
+
+# Where to look for models when you point the linter at a repo root.
+model_glob: "**/*.SemanticModel"
+
+# Fact tables that apply to every model (rarely what you want).
+fact_tables: []
+
+# Fact tables per model, keyed by the model name (the .SemanticModel folder name
+# without the suffix). This is the recommended way to declare facts.
+fact_tables_by_model:
+  # Sales:
+  #   - FactSales
+  #   - FactSalesReturns
+
+# Opt-in naming convention: any table whose name matches one of these regexes is
+# treated as a fact table. Still author-declared (you opt into the convention),
+# not the tool guessing. Useful when a workspace uses a consistent fact_ prefix.
+fact_table_patterns:
+  # - "^fact_"
+
+# Exclude Power BI auto date/time artifacts (relationships into a hidden
+# LocalDateTable_* / DateTableTemplate_* date table) from the per-object gates,
+# reported as one consolidated warning. On by default; set to false to evaluate
+# them like any other object. Note: AutoDetected_* relationships between real
+# tables are NOT auto date/time and are always evaluated.
+exclude_auto_datetime: true
+
+thresholds:
+  max_hops_to_fact: 1        # a pure star is one hop from any dimension to the fact
+  min_tables: 5
+  max_tables: 30
+  description_char_budget: 200   # Copilot reads only the first 200 characters
+
+# Regex patterns (matched case-insensitively against object names).
+patterns:
+  # key: [".*key$", ".*sk$", ".*_id$"]
+  # bad_name_prefixes: ["^f_", "^dim", "^fact"]
+  # non_summable: [".*id$", "^year$", ".*price$"]
+  # geo: [".*country.*", ".*city.*", ".*postal.*"]
+
+# Promote a WARN to a blocking GATE, or demote a GATE to a WARN, or turn a rule
+# OFF. Keys are rule ids (see the console output, e.g. "structure.join_depth").
+severity_overrides:
+  # metadata.naming: GATE
+  # structure.table_count: OFF

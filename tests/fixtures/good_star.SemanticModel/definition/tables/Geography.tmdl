@@ -1,0 +1,19 @@
+/// Geographic attributes for sales, one row per location.
+table Geography
+
+	column GeographyKey
+		dataType: int64
+		summarizeBy: none
+		isHidden
+
+	/// The country where the sale occurred.
+	column Country
+		dataType: string
+		summarizeBy: none
+		dataCategory: Country
+
+	/// The city where the sale occurred.
+	column City
+		dataType: string
+		summarizeBy: none
+		dataCategory: City
