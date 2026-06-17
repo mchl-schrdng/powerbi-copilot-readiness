@@ -62,22 +62,34 @@ copilot-readiness lint path/to/Sales.SemanticModel
 copilot-readiness lint . --config readiness.yaml
 ```
 
-Console output is an aligned dashboard (one row per model), focused on failures:
+Console output is an aligned dashboard (one row per model), focused on failures.
+The default level shows the dashboard plus the blocking gates:
 
 ```
-Copilot Readiness · 3 models (1 ready · 1 incomplete · 1 not ready)
+Copilot Readiness · 2 models (1 ready · 0 incomplete · 1 not ready)
 
-  VERDICT     MODEL           SCORE  STRUCT  META  CALC  BLOCK   WARN   PASS
-  ----------------------------------------------------------------------------
-  NOT READY   Sales              31      54     8   n/a       6     12     20
-  INCOMPLETE  Marketing          72      90     0   n/a       0      4      9
-  READY       Finance            88      95    80   n/a       0      2     31
-  ----------------------------------------------------------------------------
-  TOTAL                                                        6     18     60
+  VERDICT     MODEL          SCORE  STRUCT  META  CALC  BLOCK   WARN   PASS
+  -------------------------------------------------------------------------
+  NOT READY   bad_snowflake     49      52    47   n/a      5     21     26
+  READY       good_star        100     100   100   n/a      0      0     20
+  -------------------------------------------------------------------------
+  TOTAL                                                     5     21     46
 
-Summary: 1 ready, 1 incomplete, 1 not ready | blocking 6 | warnings 18 | passed 60 | manual ...
+Blocking gates (must fix)
+-------------------------
+  bad_snowflake
+    x Direct many-to-many relationships :: f_sls_trx -> DimPromotion  (many-to-many)
+    x Bidirectional relationships :: f_sls_trx -> DimProduct  (bothDirections)
+    x Inactive relationships exposed to Copilot :: f_sls_trx.ShipDateKey -> DimDate.DateKey  (isActive=false)
+    x Join depth from a field to the fact table :: DimCategory  (3 hop(s) to fact)
+    x Join depth from a field to the fact table :: DimSubCategory  (2 hop(s) to fact)
+
+Summary: 1 ready, 0 incomplete, 1 not ready  | blocking 5 | warnings 21 | passed 46 | manual 12
 Overall: NOT READY
 ```
+
+(In a real terminal the verdict and scores are colour-coded; colour is off
+automatically for files, pipes, and CI.)
 
 ---
 
@@ -102,6 +114,105 @@ still needs and lets you rank models against each other.
 The score is **capped at 49 when the verdict is NOT READY**, so a blocked model
 can never look green no matter how clean its metadata is. Think of a Lighthouse
 report: category scores, plus a hard list of failing audits.
+
+---
+
+## Output at every level of detail
+
+The console output has a verbosity ladder, so you can dial in exactly how much
+you want to see. All examples below are the same two-model scan.
+
+### `-q` (quiet): the dashboard and totals only
+
+Best for a quick health check or a status line. No per-finding detail.
+
+```
+$ copilot-readiness lint . --config readiness.yaml -q
+
+Copilot Readiness · 2 models (1 ready · 0 incomplete · 1 not ready)
+
+  VERDICT     MODEL          SCORE  STRUCT  META  CALC  BLOCK   WARN   PASS
+  -------------------------------------------------------------------------
+  NOT READY   bad_snowflake     49      52    47   n/a      5     21     26
+  READY       good_star        100     100   100   n/a      0      0     20
+  -------------------------------------------------------------------------
+  TOTAL                                                     5     21     46
+
+Summary: 1 ready, 0 incomplete, 1 not ready  | blocking 5 | warnings 21 | passed 46 | manual 12
+Overall: NOT READY
+```
+
+### default: dashboard plus the blocking gates
+
+What you want in a pull request: the verdict and the exact list of things that
+block each model (see the Quickstart output above).
+
+### `-v`: also list the warnings (the scored slopes)
+
+Adds every WARN finding, grouped by model. Use it when you are actively
+improving a model's finition score.
+
+```
+$ copilot-readiness lint . --config readiness.yaml -v
+
+... dashboard and blocking gates as above ...
+
+Warnings
+--------
+  bad_snowflake
+    - Visible surrogate keys or audit fields :: f_sls_trx.CustomerKey  (visible)
+    - Fact table contents :: f_sls_trx  (OrderNote)
+    - Abbreviations or technical prefixes in names :: DimCustomer  (DimCustomer)
+    - Non-summable numeric fields set to Don't Summarize :: DimDate.Year  (summarizeBy=sum)
+    - Geographic columns with a Data Category :: ...
+    ... (21 warnings total) ...
+```
+
+### `-vv`: everything, including manual checks and passing checks
+
+The full firehose: warnings, the manual checklist (Verified Answers, AI
+Instructions, ...), and every check that passed. Use it for a deep audit of a
+single model, rarely for a whole repo.
+
+---
+
+## Output formats
+
+Beyond the console, three machine- or review-friendly formats:
+
+### `--format markdown`
+
+The dashboard as a table plus collapsible per-model detail. This is what the
+GitHub Action posts as a pull-request comment and writes to the run summary.
+
+### `--format json`
+
+Structured output for tooling: a `summary` block plus, per model, the verdict,
+`finition_score`, `section_scores`, counts, and the full list of findings.
+
+```json
+{
+  "overall_ready": false,
+  "summary": { "ready": 1, "incomplete": 0, "not_ready": 1, "blocking": 5, "...": "..." },
+  "models": [
+    { "model": "bad_snowflake", "verdict": "NOT READY", "finition_score": 49,
+      "section_scores": { "Structure": 52, "Metadata": 47, "Calculations": null },
+      "findings": [ "..." ] }
+  ]
+}
+```
+
+### `--format github`
+
+GitHub Actions workflow commands: one `::error` annotation per blocking gate
+(shown inline on the pull request) and a `::notice` summary. This is what fails
+the CI check.
+
+```
+::error title=Copilot Readiness: Direct many-to-many relationships::[bad_snowflake] f_sls_trx -> DimPromotion: Direct many-to-many relationship. Resolve it with a physical bridge table to enforce a strict one-to-many flow.
+::error title=Copilot Readiness: Bidirectional relationships::[bad_snowflake] f_sls_trx -> DimProduct: Bidirectional cross-filter. This produces false totals; switch to a single direction.
+::notice title=Copilot Readiness::1 ready, 0 incomplete, 1 not ready. 5 blocking, 21 warnings.
+```
 
 ---
 
