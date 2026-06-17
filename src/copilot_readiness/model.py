@@ -93,6 +93,14 @@ class Table:
         """True for Power BI auto date/time tables (LocalDateTable_*, etc.)."""
         return _is_auto_table_name(self.name)
 
+    @property
+    def is_measure_holder(self) -> bool:
+        """A measures-only table: holds measures and no visible data column.
+
+        This is a recommended Power BI pattern (a disconnected "Measures" table),
+        so it must not be treated as a dimension that should reach a fact."""
+        return bool(self.measures) and not any(not c.is_hidden for c in self.columns)
+
     def column_by_name(self, name: str) -> Optional[Column]:
         for column in self.columns:
             if column.name.lower() == name.lower():

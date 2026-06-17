@@ -35,6 +35,8 @@ copilot-readiness lint <repo-or-model> --config readiness.yaml
 - Hidden-object scoping: rules check visible objects (matches the article's "exposed objects" language). The fact that the AI schema still includes hidden objects is surfaced as a manual checklist item, not a code gate.
 - TMDL relationship cardinality defaults to many-to-one; a many-to-many is serialized as `toCardinality: many` with `fromCardinality` defaulted to many.
 - Config regex patterns are case-insensitive (`re.IGNORECASE`).
+- Join depth has three buckets: within `max_hops_to_fact` (PASS), reachable but deeper (`structure.join_depth` GATE = real snowflake), and no path at all. A no-path table is skipped when disconnected by design (`Table.is_measure_holder`, or a name matching `utility_table_patterns`); otherwise it is `structure.disconnected_table` (WARN, not blocking). A disconnected measures table is a recommended pattern, never a gate.
+- `--select` / `--ignore` filter findings by rule id or section before the verdict is computed, so an ignored rule also stops blocking.
 
 ## Conventions
 

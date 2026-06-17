@@ -48,6 +48,17 @@ DEFAULT_NON_SUMMABLE_PATTERNS = [
     r".*age$",
 ]
 
+# Disconnected tables matching these names are disconnected by design (utility
+# tables), so the join-depth gate skips them instead of flagging a missing path.
+DEFAULT_UTILITY_TABLE_PATTERNS = [
+    r"parameter",      # what-if parameter tables
+    r"^_",             # leading-underscore technical tables
+    r"\brls\b",        # row-level-security helper tables
+    r"securit", r"sécurit",
+    r"^tech", r"^tec_",
+    r"^measures?$",    # measure-holder tables, by name
+]
+
 DEFAULT_GEO_PATTERNS = [
     r".*country.*",
     r".*city.*",
@@ -76,6 +87,7 @@ class Config:
     max_tables: int = 30
     description_char_budget: int = 200
 
+    utility_table_patterns: List[str] = field(default_factory=lambda: list(DEFAULT_UTILITY_TABLE_PATTERNS))
     key_patterns: List[str] = field(default_factory=lambda: list(DEFAULT_KEY_PATTERNS))
     bad_name_prefixes: List[str] = field(default_factory=lambda: list(DEFAULT_BAD_NAME_PREFIXES))
     non_summable_patterns: List[str] = field(default_factory=lambda: list(DEFAULT_NON_SUMMABLE_PATTERNS))
@@ -149,6 +161,7 @@ def load_config(path: Optional[str]) -> Config:
     )
 
     patterns = data.get("patterns", {}) or {}
+    config.utility_table_patterns = _as_str_list(patterns.get("utility_tables")) or config.utility_table_patterns
     config.key_patterns = _as_str_list(patterns.get("key")) or config.key_patterns
     config.bad_name_prefixes = _as_str_list(patterns.get("bad_name_prefixes")) or config.bad_name_prefixes
     config.non_summable_patterns = _as_str_list(patterns.get("non_summable")) or config.non_summable_patterns

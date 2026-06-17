@@ -15,6 +15,37 @@ from .rules import run_all_rules
 from .tmdl_parser import parse_model
 
 
+def _split_csv(values: Optional[List[str]]) -> List[str]:
+    """Flatten repeated and comma-separated flag values into a lowercased list."""
+    out: List[str] = []
+    for value in values or []:
+        out.extend(token.strip().lower() for token in value.split(",") if token.strip())
+    return out
+
+
+def _finding_matches(finding, token: str) -> bool:
+    """A token matches a finding by exact rule id, rule prefix, or section."""
+    rule_id = finding.rule_id.lower()
+    return (
+        rule_id == token
+        or rule_id.split(".")[0] == token
+        or finding.section.value.lower() == token
+    )
+
+
+def _filter_findings(findings, select: List[str], ignore: List[str]):
+    """Keep only --select matches (if any), then drop --ignore matches.
+
+    Filtering happens before the verdict is computed, so ignoring a rule also
+    stops it from blocking (like ruff/eslint --ignore)."""
+    result = findings
+    if select:
+        result = [f for f in result if any(_finding_matches(f, t) for t in select)]
+    if ignore:
+        result = [f for f in result if not any(_finding_matches(f, t) for t in ignore)]
+    return result
+
+
 def discover_models(target: str, model_glob: str = "**/*.SemanticModel") -> List[str]:
     """Find .SemanticModel folders at or under the target path, using model_glob."""
     target = os.path.normpath(target)
@@ -45,10 +76,14 @@ def _lint(args: argparse.Namespace) -> int:
         sys.stderr.write(f"No .SemanticModel folders found under: {args.target}\n")
         return 2
 
+    select = _split_csv(args.select)
+    ignore = _split_csv(args.ignore)
+
     results: List[ModelResult] = []
     for path in model_paths:
         model = parse_model(path)
         findings = run_all_rules(model, config)
+        findings = _filter_findings(findings, select, ignore)
         results.append(evaluate(model.name, path, findings))
 
     verbosity = -1 if args.quiet else args.verbose
@@ -104,6 +139,22 @@ def build_parser() -> argparse.ArgumentParser:
         "--quiet",
         action="store_true",
         help="Console: show only the per-model summary and totals, no finding detail.",
+    )
+    lint.add_argument(
+        "--select",
+        action="append",
+        default=[],
+        metavar="RULE",
+        help="Only report these rule ids or sections (comma-separated, repeatable). "
+        "Example: --select metadata,structure.join_depth",
+    )
+    lint.add_argument(
+        "--ignore",
+        action="append",
+        default=[],
+        metavar="RULE",
+        help="Drop these rule ids or sections so they do not report or block. "
+        "Example: --ignore structure.disconnected_table",
     )
     lint.add_argument("--no-color", action="store_true", help="Disable coloured console output.")
     lint.add_argument(

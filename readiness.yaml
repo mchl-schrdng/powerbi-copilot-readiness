@@ -38,6 +38,10 @@ thresholds:
 
 # Regex patterns (matched case-insensitively against object names).
 patterns:
+  # Disconnected tables matching these are "disconnected by design" (what-if
+  # parameters, RLS, technical helpers, measure holders) and are skipped by the
+  # join-depth gate instead of being flagged as a disconnected table.
+  # utility_tables: ["parameter", "^_", "\\brls\\b", "securit", "^tech", "^measures?$"]
   # key: [".*key$", ".*sk$", ".*_id$"]
   # bad_name_prefixes: ["^f_", "^dim", "^fact"]
   # non_summable: [".*id$", "^year$", ".*price$"]

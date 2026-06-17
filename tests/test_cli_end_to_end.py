@@ -49,6 +49,23 @@ def test_verbose_shows_warnings(bad_snowflake_path, fixtures_config, capsys):
     assert "Warnings" in out
 
 
+def test_ignore_rules_unblocks(bad_snowflake_path, fixtures_config, capsys):
+    # Ignoring every structural gate leaves no blocker, so the model passes.
+    code = main([
+        "lint", bad_snowflake_path, "--config", fixtures_config,
+        "--ignore", "structure.many_to_many,structure.bidirectional,structure.inactive_exposed,structure.join_depth",
+    ])
+    assert code == 0
+
+
+def test_select_section_only(bad_snowflake_path, fixtures_config, capsys):
+    # Selecting only metadata drops the structural gates, so exit is 0 (warnings only).
+    code = main(["lint", bad_snowflake_path, "--config", fixtures_config, "--select", "metadata"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "Direct many-to-many" not in out
+
+
 def test_github_format_emits_annotations(bad_snowflake_path, fixtures_config, capsys):
     code = main(["lint", bad_snowflake_path, "--config", fixtures_config, "--format", "github"])
     out = capsys.readouterr().out

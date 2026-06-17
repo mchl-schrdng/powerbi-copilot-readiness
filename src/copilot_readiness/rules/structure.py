@@ -204,26 +204,60 @@ def check_join_depth(model: Model, config: Config) -> List[Finding]:
             if table.name in graph and fact in graph and nx.has_path(graph, table.name, fact):
                 length = nx.shortest_path_length(graph, table.name, fact)
                 hops = length if hops is None else min(hops, length)
-        ok = hops is not None and hops <= config.max_hops_to_fact
-        findings.append(
-            Finding(
-                rule_id="structure.join_depth",
-                section=Section.STRUCTURE,
-                title="Join depth from a field to the fact table",
-                obj=table.name,
-                status=Status.PASS if ok else Status.FAIL,
-                severity=Severity.GATE,
-                observed=f"{hops} hop(s) to fact" if hops is not None else "no active path to fact",
-                message=(
-                    f"Reaches a fact table in {hops} hop(s)."
-                    if ok
-                    else (
-                        "Snowflake or disconnected. A dimension must reach the fact in "
-                        f"{config.max_hops_to_fact} hop(s); flatten nested dimensions into one."
-                    )
-                ),
+
+        if hops is not None and hops <= config.max_hops_to_fact:
+            # Within range: a passing join-depth gate.
+            findings.append(
+                Finding(
+                    rule_id="structure.join_depth",
+                    section=Section.STRUCTURE,
+                    title="Join depth from a field to the fact table",
+                    obj=table.name,
+                    status=Status.PASS,
+                    severity=Severity.GATE,
+                    observed=f"{hops} hop(s) to fact",
+                    message=f"Reaches a fact table in {hops} hop(s).",
+                )
             )
-        )
+        elif hops is not None:
+            # Reachable but too deep: a real snowflake. Blocking.
+            findings.append(
+                Finding(
+                    rule_id="structure.join_depth",
+                    section=Section.STRUCTURE,
+                    title="Join depth from a field to the fact table",
+                    obj=table.name,
+                    status=Status.FAIL,
+                    severity=Severity.GATE,
+                    observed=f"{hops} hop(s) to fact",
+                    message=(
+                        f"Snowflake: reaches the fact in {hops} hops. A dimension must reach "
+                        f"it in {config.max_hops_to_fact}; flatten nested dimensions into one."
+                    ),
+                )
+            )
+        else:
+            # No path to any fact. Skip tables that are disconnected by design
+            # (measure holders, what-if parameters, RLS, technical helpers);
+            # flag the rest as a non-blocking disconnected-table warning.
+            if table.is_measure_holder or _matches_any(table.name, config.utility_table_patterns):
+                continue
+            findings.append(
+                Finding(
+                    rule_id="structure.disconnected_table",
+                    section=Section.STRUCTURE,
+                    title="Disconnected table",
+                    obj=table.name,
+                    status=Status.FAIL,
+                    severity=Severity.WARN,
+                    observed="no active relationship to a fact",
+                    message=(
+                        "Visible table with no active path to a fact table. Copilot cannot "
+                        "relate it to anything. Connect it to the model, or hide it if it is "
+                        "a helper. (If this is a utility table, add it to utility_tables.)"
+                    ),
+                )
+            )
     return findings
 
 

@@ -232,13 +232,14 @@ Every check carries a severity:
 | Direct many-to-many | A relationship has `many` cardinality on both ends | Power BI treats these as limited relationships: blank rows dropped, inner joins, mathematically wrong totals. Resolve with a physical bridge table. |
 | Bidirectional relationship | `crossFilteringBehavior` is `bothDirections` | Bidirectional cross-filtering produces false totals and ambiguous filter context. Use a single direction. |
 | Inactive relationship exposed | A relationship is inactive and at least one endpoint (table and column) is visible | Copilot only maps active relationships. A visible role-playing relationship is dead weight it cannot use; split the dimension into separate active tables. |
-| Join depth to the fact | A visible dimension reaches the fact table in more than one hop, or has no active path to it | This is a snowflake or a disconnected table. Copilot cannot reliably traverse multi-hop paths; flatten nested dimensions into one. Requires declared fact tables (see below). |
+| Join depth to the fact | A visible dimension reaches the fact table in more than one hop (a snowflake) | Copilot cannot reliably traverse multi-hop paths; flatten nested dimensions into one. Requires declared fact tables (see below). A table with no path at all is handled separately as a warning, not a gate. |
 
 ### Quality warnings (scored)
 
 | Check | Triggers when | Why it matters |
 |---|---|---|
 | Auto date/time tables | The model contains hidden `LocalDateTable_*` / `DateTableTemplate_*` tables and their relationships | The auto date/time feature generates one hidden date table per date column, bloating the schema. Disable it and use a single shared date dimension. (One consolidated finding, not one per table.) |
+| Disconnected table | A visible table has no active path to any fact, and is not a known utility table (measure holder, what-if parameter, RLS, technical helper) | Copilot cannot relate it to anything, so it answers nothing useful from it. Connect it, or hide it if it is a helper. Utility tables are skipped via the `utility_tables` patterns. |
 | Table count | The number of visible tables is outside 5 to 30 | A working range. Far above it usually means the scope is too broad for one Copilot experience. |
 | Visible surrogate or audit keys | A visible column matches a key/audit name pattern (`*Key`, `*SK`, `*_id`, audit timestamps) | Keys and audit fields are meaningless to a business question and invite wrong answers. Hide them (use Object-Level Security if sensitive). |
 | Fact table contents | A fact table holds a visible descriptive (text) column that is not a key | Fact tables should carry foreign keys and measures only. Descriptive attributes belong in a dimension. |
@@ -315,6 +316,7 @@ thresholds:
 
 # Case-insensitive regexes matched against object names.
 patterns:
+  utility_tables: ["parameter", "^_", "\\brls\\b", "^tech"]  # disconnected-by-design tables to skip
   key: [".*key$", ".*sk$", ".*_id$"]
   bad_name_prefixes: ["^f_", "^dim", "^fact"]
   non_summable: [".*id$", "^year$", ".*price$"]
@@ -343,6 +345,8 @@ copilot-readiness lint <target> [options]
 | `--format console\|json\|markdown\|github` | Output format. `github` emits workflow annotations. |
 | `-q`, `--quiet` | Console: per-model table and totals only, no finding detail. |
 | `-v`, `-vv` | More console detail: `-v` adds warnings, `-vv` adds manual checks and passes. |
+| `--select RULE` | Only report these rule ids or sections (comma-separated, repeatable). Example: `--select metadata,structure.join_depth`. |
+| `--ignore RULE` | Drop these rule ids or sections so they neither report nor block. Example: `--ignore structure.disconnected_table`. |
 | `--no-color` | Disable coloured console output (also off automatically for files, pipes, and CI). |
 | `--allow-incomplete` | Exit `0` when the only non-ready models are `INCOMPLETE`; fail solely on real defects. |
 | `--output FILE` | Write the report to a file instead of stdout. |
