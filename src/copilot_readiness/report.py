@@ -33,11 +33,13 @@ _SCORED_SECTIONS = [Section.STRUCTURE, Section.METADATA, Section.CALCULATIONS]
 _VERDICT_ICON = {Verdict.READY: "✅", Verdict.NOT_READY: "❌", Verdict.INCOMPLETE: "⚠️"}
 _VERDICT_ORDER = {Verdict.NOT_READY: 0, Verdict.INCOMPLETE: 1, Verdict.READY: 2}
 
-_ANSI = {"red": "31", "green": "32", "yellow": "33", "dim": "2", "bold": "1"}
+_ANSI = {"red": "31", "green": "32", "yellow": "33", "cyan": "36", "dim": "2", "bold": "1"}
 
+# Effort never uses green: green reads as "good/ready" and would visually soften a
+# NOT READY verdict. Near fix is cyan (neutral "quick win"), then yellow, then red.
 _EFFORT_COLOR = {
     Effort.NONE: "dim",
-    Effort.NEAR_FIX: "green",
+    Effort.NEAR_FIX: "cyan",
     Effort.NEEDS_WORK: "yellow",
     Effort.MAJOR_REWORK: "red",
     Effort.BLOCKED_ON_CONFIG: "dim",

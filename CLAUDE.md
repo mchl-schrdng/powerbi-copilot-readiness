@@ -8,7 +8,7 @@ Copilot "Talk to your data" readiness. Pure Python, no .NET. Layer 1 only
 
 ```bash
 pip install -e ".[dev]"          # install + pytest
-pytest -q                        # 41 tests
+pytest -q                        # run the test suite
 copilot-readiness lint <repo-or-model> --config readiness.yaml
 ```
 

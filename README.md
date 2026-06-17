@@ -93,9 +93,9 @@ automatically for files, pipes, and CI.)
 
 ---
 
-## How a model is judged: verdict + score
+## How a model is judged: verdict + score + effort
 
-Two independent axes are reported and never merged into a single number.
+Three independent axes are reported and never merged into a single number.
 
 ### Verdict (the go/no-go decision)
 
@@ -206,14 +206,16 @@ GitHub Action posts as a pull-request comment and writes to the run summary.
 ### `--format json`
 
 Structured output for tooling: a `summary` block plus, per model, the verdict,
-`finition_score`, `section_scores`, counts, and the full list of findings.
+`effort`, `finition_score`, `section_scores`, counts, and the full list of
+findings.
 
 ```json
 {
   "overall_ready": false,
   "summary": { "ready": 1, "incomplete": 0, "not_ready": 1, "blocking": 5, "...": "..." },
   "models": [
-    { "model": "bad_snowflake", "verdict": "NOT READY", "finition_score": 49,
+    { "model": "bad_snowflake", "verdict": "NOT READY", "effort": "Needs work",
+      "finition_score": 49,
       "section_scores": { "Structure": 52, "Metadata": 47, "Calculations": null },
       "findings": [ "..." ] }
   ]
