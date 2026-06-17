@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 from typing import List, Optional
 
-from .gate import ModelResult, Verdict
+from .gate import Effort, ModelResult, Verdict
 from .rules.base import Section, Status
 
 # Marker so the GitHub Action can find and update its sticky PR comment.
@@ -34,6 +34,14 @@ _VERDICT_ICON = {Verdict.READY: "✅", Verdict.NOT_READY: "❌", Verdict.INCOMPL
 _VERDICT_ORDER = {Verdict.NOT_READY: 0, Verdict.INCOMPLETE: 1, Verdict.READY: 2}
 
 _ANSI = {"red": "31", "green": "32", "yellow": "33", "dim": "2", "bold": "1"}
+
+_EFFORT_COLOR = {
+    Effort.NONE: "dim",
+    Effort.NEAR_FIX: "green",
+    Effort.NEEDS_WORK: "yellow",
+    Effort.MAJOR_REWORK: "red",
+    Effort.BLOCKED_ON_CONFIG: "dim",
+}
 
 
 class _Paint:
@@ -112,6 +120,7 @@ def render_console(results: List[ModelResult], verbosity: int = NORMAL, color: b
     name_w = min(max((len(r.model_name) for r in results), default=5), 38)
     cols = [
         ("VERDICT", 10, "l"),
+        ("EFFORT", 17, "l"),
         ("MODEL", name_w, "l"),
         ("SCORE", 5, "r"),
         ("STRUCT", 6, "r"),
@@ -135,6 +144,7 @@ def render_console(results: List[ModelResult], verbosity: int = NORMAL, color: b
         ss = r.section_scores
         row = "  " + "  ".join([
             cell(r.verdict.value, 10, "l", _verdict_color(r.verdict)),
+            cell(r.effort.value, 17, "l", _EFFORT_COLOR[r.effort]),
             cell(r.model_name[:name_w], name_w, "l"),
             cell(_score_str(r.finition), 5, "r", _score_color(r.finition)),
             cell(_score_str(ss[Section.STRUCTURE]), 6, "r", _score_color(ss[Section.STRUCTURE])),
@@ -149,6 +159,7 @@ def render_console(results: List[ModelResult], verbosity: int = NORMAL, color: b
     lines.append(rule)
     totals_row = "  " + "  ".join([
         cell("TOTAL", 10, "l", "dim"),
+        cell("", 17, "l"),
         cell("", name_w, "l"),
         cell("", 5, "r"),
         cell("", 6, "r"),
@@ -228,6 +239,7 @@ def render_json(results: List[ModelResult]) -> str:
                 "model": r.model_name,
                 "source_path": r.source_path,
                 "verdict": r.verdict.value,
+                "effort": r.effort.value,
                 "ready": r.is_ready,
                 "finition_score": r.finition,
                 "section_scores": {s.value: r.section_scores[s] for s in _SCORED_SECTIONS},
@@ -277,12 +289,12 @@ def render_markdown(results: List[ModelResult]) -> str:
     lines.append("")
 
     # Summary table: the dashboard.
-    lines.append("| Model | Verdict | Finition | Blocking | Warnings | Passed |")
-    lines.append("|---|---|--:|--:|--:|--:|")
+    lines.append("| Model | Verdict | Effort | Finition | Blocking | Warnings | Passed |")
+    lines.append("|---|---|---|--:|--:|--:|--:|")
     for r in _worst_first(results):
         verdict = f"{_VERDICT_ICON[r.verdict]} {r.verdict.value}"
         lines.append(
-            f"| {r.model_name} | {verdict} | {_score_str(r.finition)}/100 "
+            f"| {r.model_name} | {verdict} | {r.effort.value} | {_score_str(r.finition)}/100 "
             f"| {len(r.real_blocking)} | {len(r.warnings)} | {len(r.passed)} |"
         )
     lines.append("")

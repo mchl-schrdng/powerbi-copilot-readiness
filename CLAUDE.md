@@ -22,10 +22,11 @@ copilot-readiness lint <repo-or-model> --config readiness.yaml
 - `rules/` holds the checks (`structure`, `metadata`, `calculations`); each returns `Finding`s with a section, status, and severity.
 - `gate.py` computes the verdict and scores; `report.py` renders; `cli.py` is the entry point and owns the exit code.
 
-## Two axes (never merge them)
+## Three axes (never merge them)
 
 - **Verdict**: `READY` / `NOT READY` / `INCOMPLETE`, driven only by the hard structural GATES (the cliffs): direct many-to-many, bidirectional, exposed inactive relationship, snowflake / join depth over one hop. `INCOMPLETE` means no defect found but a required input (the fact-table declaration) is missing.
 - **Finition score** (0-100, per section + overall), driven by the WARN checks (the slopes). It is capped at 49 when the verdict is NOT READY so a blocked model can never look green.
+- **Effort** (`gate.Effort`): how far a NOT READY model is from ready, from blocker count + Structure score (`Near fix` 1-2, `Needs work` 3-8, `Major rework` 9+ or Structure < 40, `Blocked on config` for INCOMPLETE). A communication/triage axis only; it never says ready while a blocker exists, so it cannot soften the gate.
 
 ## Invariants (each is a past bug; do not regress)
 

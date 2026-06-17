@@ -27,6 +27,23 @@ class Verdict(str, Enum):
     INCOMPLETE = "INCOMPLETE"   # cannot assess: a required input was not declared
 
 
+class Effort(str, Enum):
+    """How far a model is from ready. A communication axis on top of the verdict;
+    it never says 'ready' while a blocker exists, so it cannot soften the gate."""
+
+    NONE = "-"
+    NEAR_FIX = "Near fix"
+    NEEDS_WORK = "Needs work"
+    MAJOR_REWORK = "Major rework"
+    BLOCKED_ON_CONFIG = "Blocked on config"
+
+
+# Effort thresholds (blocking-gate counts). Tunable here if needed.
+_NEAR_FIX_MAX = 2          # 1 to 2 blockers
+_NEEDS_WORK_MAX = 8        # 3 to 8 blockers
+_MAJOR_STRUCTURE_FLOOR = 40  # below this Structure score, it is major rework
+
+
 def _score(findings: List[Finding]) -> Optional[int]:
     """Percent of scoreable checks that pass. None when nothing is scoreable.
 
@@ -92,6 +109,21 @@ class ModelResult:
     @property
     def is_ready(self) -> bool:
         return self.verdict == Verdict.READY
+
+    @property
+    def effort(self) -> Effort:
+        """Remediation distance, derived from blocker count and structure score."""
+        if self.verdict == Verdict.READY:
+            return Effort.NONE
+        if self.verdict == Verdict.INCOMPLETE:
+            return Effort.BLOCKED_ON_CONFIG
+        n = len(self.real_blocking)
+        structure = self.section_scores.get(Section.STRUCTURE)
+        if n > _NEEDS_WORK_MAX or (structure is not None and structure < _MAJOR_STRUCTURE_FLOOR):
+            return Effort.MAJOR_REWORK
+        if n > _NEAR_FIX_MAX:
+            return Effort.NEEDS_WORK
+        return Effort.NEAR_FIX
 
     @property
     def section_scores(self) -> Dict[Section, Optional[int]]:

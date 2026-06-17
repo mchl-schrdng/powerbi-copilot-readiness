@@ -68,12 +68,12 @@ The default level shows the dashboard plus the blocking gates:
 ```
 Copilot Readiness · 2 models (1 ready · 0 incomplete · 1 not ready)
 
-  VERDICT     MODEL          SCORE  STRUCT  META  CALC  BLOCK   WARN   PASS
-  -------------------------------------------------------------------------
-  NOT READY   bad_snowflake     49      52    47   n/a      5     21     26
-  READY       good_star        100     100   100   n/a      0      0     20
-  -------------------------------------------------------------------------
-  TOTAL                                                     5     21     46
+  VERDICT     EFFORT             MODEL          SCORE  STRUCT  META  CALC  BLOCK   WARN   PASS
+  --------------------------------------------------------------------------------------------
+  NOT READY   Needs work         bad_snowflake     49      52    47   n/a      5     21     26
+  READY       -                  good_star        100     100   100   n/a      0      0     20
+  --------------------------------------------------------------------------------------------
+  TOTAL                                                                        5     21     46
 
 Blocking gates (must fix)
 -------------------------
@@ -115,6 +115,24 @@ The score is **capped at 49 when the verdict is NOT READY**, so a blocked model
 can never look green no matter how clean its metadata is. Think of a Lighthouse
 report: category scores, plus a hard list of failing audits.
 
+### Effort (how far from ready)
+
+`NOT READY` alone does not say whether a model is one fix away or a rewrite away.
+The **effort** tier answers that, derived from the blocker count and the
+Structure score. It sits on top of the verdict and never softens it: a model
+with any blocker is still NOT READY.
+
+| Effort | When |
+|---|---|
+| `Near fix` | 1 to 2 blocking gates. A focused afternoon. |
+| `Needs work` | 3 to 8 blocking gates. |
+| `Major rework` | 9 or more blocking gates, or a Structure score below 40. |
+| `Blocked on config` | The model is `INCOMPLETE` (declare its fact table). |
+| `-` | The model is `READY`. |
+
+This is what turns "12 models not ready" into a plan: fix the `Near fix` models
+first, triage the `Major rework` ones.
+
 ---
 
 ## Output at every level of detail
@@ -131,12 +149,12 @@ $ copilot-readiness lint . --config readiness.yaml -q
 
 Copilot Readiness · 2 models (1 ready · 0 incomplete · 1 not ready)
 
-  VERDICT     MODEL          SCORE  STRUCT  META  CALC  BLOCK   WARN   PASS
-  -------------------------------------------------------------------------
-  NOT READY   bad_snowflake     49      52    47   n/a      5     21     26
-  READY       good_star        100     100   100   n/a      0      0     20
-  -------------------------------------------------------------------------
-  TOTAL                                                     5     21     46
+  VERDICT     EFFORT             MODEL          SCORE  STRUCT  META  CALC  BLOCK   WARN   PASS
+  --------------------------------------------------------------------------------------------
+  NOT READY   Needs work         bad_snowflake     49      52    47   n/a      5     21     26
+  READY       -                  good_star        100     100   100   n/a      0      0     20
+  --------------------------------------------------------------------------------------------
+  TOTAL                                                                        5     21     46
 
 Summary: 1 ready, 0 incomplete, 1 not ready  | blocking 5 | warnings 21 | passed 46 | manual 12
 Overall: NOT READY
