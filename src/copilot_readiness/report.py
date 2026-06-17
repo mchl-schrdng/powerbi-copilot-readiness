@@ -266,7 +266,7 @@ def render_markdown(results: List[ModelResult]) -> str:
     lines: List[str] = [COMMENT_MARKER, "# Copilot Readiness Scorecard", ""]
     banner = "✅ All models READY" if overall_ready else "❌ NOT READY"
     lines.append(
-        f"**{banner}** — {t['ready']} ready, {t['incomplete']} incomplete, "
+        f"**{banner}** · {t['ready']} ready, {t['incomplete']} incomplete, "
         f"{t['not_ready']} not ready (of {t['models']})"
     )
     lines.append("")
@@ -292,7 +292,7 @@ def render_markdown(results: List[ModelResult]) -> str:
         if r.verdict == Verdict.READY and not r.warnings:
             continue
         summary = (
-            f"{_VERDICT_ICON[r.verdict]} {r.model_name} — {r.verdict.value}, "
+            f"{_VERDICT_ICON[r.verdict]} {r.model_name} · {r.verdict.value}, "
             f"finition {_score_str(r.finition)}/100"
         )
         lines.append(f"<details><summary>{summary}</summary>")

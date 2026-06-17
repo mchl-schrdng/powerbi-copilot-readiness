@@ -89,6 +89,39 @@ class Config:
         return list(dict.fromkeys(list(specific) + list(self.fact_tables)))
 
 
+_TRUE = {"true", "1", "yes", "on"}
+_FALSE = {"false", "0", "no", "off"}
+
+
+def _as_bool(value, default: bool) -> bool:
+    """Parse a YAML bool robustly. A quoted "false" is False, not truthy."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in _TRUE:
+            return True
+        if lowered in _FALSE:
+            return False
+    if value is None:
+        return default
+    return bool(value)
+
+
+def _as_str_list(value) -> List[str]:
+    """Coerce a scalar or list into a list of strings.
+
+    Guards against `key: SomeName` (a bare string) being treated as an iterable
+    of characters, which would explode into ['S', 'o', 'm', 'e', ...]."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, (list, tuple)):
+        return [str(item) for item in value]
+    return [str(value)]
+
+
 def load_config(path: Optional[str]) -> Config:
     if not path or not os.path.isfile(path):
         return Config()
@@ -98,28 +131,28 @@ def load_config(path: Optional[str]) -> Config:
 
     config = Config()
     thresholds = data.get("thresholds", {}) or {}
-    config.model_glob = data.get("model_glob", config.model_glob)
-    config.fact_tables = list(data.get("fact_tables", []) or [])
+    config.model_glob = str(data.get("model_glob", config.model_glob))
+    config.fact_tables = _as_str_list(data.get("fact_tables"))
     config.fact_tables_by_model = {
-        str(k): list(v or []) for k, v in (data.get("fact_tables_by_model", {}) or {}).items()
+        str(k): _as_str_list(v) for k, v in (data.get("fact_tables_by_model", {}) or {}).items()
     }
-    config.fact_table_patterns = list(data.get("fact_table_patterns", []) or [])
+    config.fact_table_patterns = _as_str_list(data.get("fact_table_patterns"))
 
-    config.exclude_auto_datetime = bool(
-        data.get("exclude_auto_datetime", config.exclude_auto_datetime)
+    config.exclude_auto_datetime = _as_bool(
+        data.get("exclude_auto_datetime"), config.exclude_auto_datetime
     )
-    config.max_hops_to_fact = thresholds.get("max_hops_to_fact", config.max_hops_to_fact)
-    config.min_tables = thresholds.get("min_tables", config.min_tables)
-    config.max_tables = thresholds.get("max_tables", config.max_tables)
-    config.description_char_budget = thresholds.get(
-        "description_char_budget", config.description_char_budget
+    config.max_hops_to_fact = int(thresholds.get("max_hops_to_fact", config.max_hops_to_fact))
+    config.min_tables = int(thresholds.get("min_tables", config.min_tables))
+    config.max_tables = int(thresholds.get("max_tables", config.max_tables))
+    config.description_char_budget = int(
+        thresholds.get("description_char_budget", config.description_char_budget)
     )
 
     patterns = data.get("patterns", {}) or {}
-    config.key_patterns = list(patterns.get("key", config.key_patterns))
-    config.bad_name_prefixes = list(patterns.get("bad_name_prefixes", config.bad_name_prefixes))
-    config.non_summable_patterns = list(patterns.get("non_summable", config.non_summable_patterns))
-    config.geo_patterns = list(patterns.get("geo", config.geo_patterns))
+    config.key_patterns = _as_str_list(patterns.get("key")) or config.key_patterns
+    config.bad_name_prefixes = _as_str_list(patterns.get("bad_name_prefixes")) or config.bad_name_prefixes
+    config.non_summable_patterns = _as_str_list(patterns.get("non_summable")) or config.non_summable_patterns
+    config.geo_patterns = _as_str_list(patterns.get("geo")) or config.geo_patterns
 
     config.severity_overrides = {
         str(k): str(v).upper() for k, v in (data.get("severity_overrides", {}) or {}).items()

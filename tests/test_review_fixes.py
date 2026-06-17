@@ -116,3 +116,44 @@ def test_allow_incomplete_flag_changes_exit_code(good_star_path):
     # No fact declared -> INCOMPLETE. Default exits 1, --allow-incomplete exits 0.
     assert main(["lint", good_star_path]) == 1
     assert main(["lint", good_star_path, "--allow-incomplete"]) == 0
+
+
+def test_hidden_table_is_not_evaluated_by_quality_rules(tmp_path):
+    """A column in a hidden table is not surfaced, so visible-object rules skip it."""
+    model_dir = os.path.join(str(tmp_path), "Demo.SemanticModel")
+    _write(model_dir, "tables/fact_sales.tmdl", "table fact_sales\n\tcolumn Amount\n\t\tdataType: decimal\n\t\tsummarizeBy: sum\n\t\tisHidden\n")
+    # Hidden staging table whose columns are NOT individually hidden.
+    _write(model_dir, "tables/f_staging.tmdl", """\
+        table f_staging
+        \tisHidden
+        \tcolumn CustomerKey
+        \t\tdataType: int64
+        \t\tsummarizeBy: sum
+        """)
+    model = parse_model(model_dir)
+    config = Config(fact_table_patterns=["^fact_"])
+    keys = _findings(model, config, "structure.visible_keys")
+    non_summable = _findings(model, config, "metadata.non_summable")
+    naming = _findings(model, config, "metadata.naming")
+    # CustomerKey lives in a hidden table -> not flagged by any visible-object rule.
+    assert not any(f.status == Status.FAIL and "CustomerKey" in f.obj for f in keys)
+    assert not any("f_staging" in f.obj for f in non_summable)
+    assert not any(f.status == Status.FAIL and f.obj == "f_staging" for f in naming)
+
+
+def test_config_bool_and_list_coercion(tmp_path):
+    from copilot_readiness.config import load_config
+    cfg_path = os.path.join(str(tmp_path), "readiness.yaml")
+    with open(cfg_path, "w", encoding="utf-8") as handle:
+        handle.write(
+            'exclude_auto_datetime: "false"\n'
+            "fact_tables_by_model:\n"
+            "  Sales: FactSales\n"      # bare string, not a list
+            "fact_tables: FactGlobal\n"
+        )
+    config = load_config(cfg_path)
+    # Quoted "false" must parse as False, not truthy.
+    assert config.exclude_auto_datetime is False
+    # A bare string value must become a one-element list, not a list of chars.
+    assert config.fact_tables_by_model["Sales"] == ["FactSales"]
+    assert config.fact_tables == ["FactGlobal"]

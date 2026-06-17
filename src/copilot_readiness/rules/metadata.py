@@ -16,9 +16,10 @@ def _matches_any(name: str, patterns: List[str]) -> bool:
 
 
 def _tables(model: Model, config: Config):
-    if config.exclude_auto_datetime:
-        return model.authored_tables()
-    return model.tables
+    """Tables these quality rules evaluate: visible (not hidden), and not auto
+    date/time noise. Consistent with the linter's 'visible object' model."""
+    tables = model.authored_tables() if config.exclude_auto_datetime else model.tables
+    return [t for t in tables if not t.is_hidden]
 
 
 def check_naming(model: Model, config: Config) -> List[Finding]:

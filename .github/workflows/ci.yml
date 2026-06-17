@@ -1,0 +1,47 @@
+name: CI
+
+# Tests the linter package itself: installs it and runs the test suite plus a
+# CLI smoke test. Runs on every push to main and every pull request.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install (with dev deps)
+        run: pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: CLI smoke test
+        run: |
+          # The clean fixture must pass (exit 0).
+          copilot-readiness lint tests/fixtures/good_star.SemanticModel \
+            --config tests/fixtures/readiness.yaml
+          # The broken fixture must fail (exit 1). Invert the status.
+          if copilot-readiness lint tests/fixtures/bad_snowflake.SemanticModel \
+            --config tests/fixtures/readiness.yaml; then
+            echo "expected bad_snowflake to be NOT READY (non-zero exit)"
+            exit 1
+          fi

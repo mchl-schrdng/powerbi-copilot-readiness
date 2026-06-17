@@ -1,8 +1,16 @@
-name: Copilot Readiness
+# TEMPLATE: copy this into YOUR Power BI models repository as
+# .github/workflows/copilot-readiness.yml
+#
+# It is intentionally NOT placed in this package's own .github/workflows, because
+# this package contains only test fixtures (one of which is deliberately broken),
+# so running the gate here would always fail. Use it in a repo that holds real
+# .SemanticModel folders.
+#
+# Gates Power BI models for Copilot readiness: posts the scorecard as a sticky PR
+# comment, writes it to the run summary, and fails the check when a model is not
+# ready.
 
-# Gate Power BI semantic models for Copilot "Talk to your data" readiness.
-# Runs on pull requests that touch any .SemanticModel folder, posts the scorecard
-# as a sticky PR comment, and fails the check when a model is NOT READY.
+name: Copilot Readiness
 
 on:
   pull_request:
@@ -32,11 +40,11 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install linter
-        run: pip install .
+      - name: Install the linter
+        run: pip install "copilot-readiness-linter @ git+https://github.com/mchl-schrdng/powerbi-copilot-readiness@main"
 
       - name: Build the scorecard (markdown)
-        run: copilot-readiness lint . --format markdown --output report.md || true
+        run: copilot-readiness lint . --config readiness.yaml --format markdown --output report.md || true
 
       - name: Write the job summary
         run: cat report.md >> "$GITHUB_STEP_SUMMARY"
@@ -62,6 +70,6 @@ jobs:
       - name: Enforce the gate (annotations + exit code)
         # 'github' format emits ::error annotations per blocking gate, ::warning
         # for INCOMPLETE models, and a ::notice summary. It exits non-zero unless
-        # every model is READY, which fails this required check. Add
-        # --allow-incomplete to fail only on genuine defects, not missing config.
-        run: copilot-readiness lint . --format github
+        # every model is READY. Add --allow-incomplete to fail only on genuine
+        # defects, not a missing fact-table declaration.
+        run: copilot-readiness lint . --config readiness.yaml --format github

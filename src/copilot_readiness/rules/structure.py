@@ -251,6 +251,8 @@ def check_table_count(model: Model, config: Config) -> List[Finding]:
 def check_visible_keys(model: Model, config: Config) -> List[Finding]:
     findings: List[Finding] = []
     for table in _tables(model, config):
+        if table.is_hidden:
+            continue  # a key in a hidden table is not visible to the user
         for column in table.columns:
             if column.is_hidden:
                 continue

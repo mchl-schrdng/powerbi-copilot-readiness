@@ -109,9 +109,9 @@ report: category scores, plus a hard list of failing audits.
 
 Every check carries a severity:
 
-- **GATE** — a failure blocks the model (NOT READY).
-- **WARN** — reported and scored, never blocking on its own.
-- **MANUAL** — cannot be verified from TMDL, surfaced as a checklist item rather
+- **GATE**: a failure blocks the model (NOT READY).
+- **WARN**: reported and scored, never blocking on its own.
+- **MANUAL**: cannot be verified from TMDL, surfaced as a checklist item rather
   than silently passed or failed.
 
 ### Structural gates (blocking)
@@ -242,17 +242,26 @@ found.
 
 ---
 
-## GitHub Action
+## GitHub Action (for your models repo)
 
-`.github/workflows/copilot-readiness.yml` runs on pull requests that touch any
-`.SemanticModel` folder. It:
+A ready-to-use workflow template lives at
+[`examples/github-action.yml`](examples/github-action.yml). Copy it into your
+**Power BI models** repository as `.github/workflows/copilot-readiness.yml`. On
+pull requests that touch any `.SemanticModel` folder it:
 
 1. writes the scorecard to the run's Job Summary,
 2. posts (and updates) a sticky pull-request comment with the dashboard,
 3. emits an `::error` annotation per blocking gate and fails the required check
    when a model is not ready.
 
-It needs only the built-in `GITHUB_TOKEN`.
+It needs only the built-in `GITHUB_TOKEN`, and installs the linter straight from
+this repository. It is shipped as a template rather than an active workflow here
+because this package contains only test fixtures (one deliberately broken), so
+running the gate against itself would always fail.
+
+This repository's own CI (`.github/workflows/ci.yml`) instead installs the
+package and runs the test suite plus a CLI smoke test on every push and pull
+request.
 
 ---
 
